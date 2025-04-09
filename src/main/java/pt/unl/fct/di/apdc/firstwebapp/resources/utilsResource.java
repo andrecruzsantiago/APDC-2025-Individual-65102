@@ -6,6 +6,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import com.google.gson.Gson;
+import pt.unl.fct.di.apdc.firstwebapp.util.ChangeRequest;
 import pt.unl.fct.di.apdc.firstwebapp.util.DefaultUser;
 import pt.unl.fct.di.apdc.firstwebapp.util.Info;
 
@@ -312,19 +313,19 @@ public class utilsResource {
     @POST
     @Path("/change/{username}")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response update(@PathParam("username") String username,Info data1, DefaultUser data) {
+    public Response update(@PathParam("username") String username, ChangeRequest data) {
 
         Key userKey = datastore.newKeyFactory().setKind("User").newKey(username);
         Entity userEntity = datastore.get(userKey);
 
-        Key targetKey = datastore.newKeyFactory().setKind("User").newKey(data1.target);
+        Key targetKey = datastore.newKeyFactory().setKind("User").newKey(data.target);
         Entity targetEntity = datastore.get(targetKey);
 
         if (userEntity == null || targetEntity == null) {
             return Response.status(Status.NOT_FOUND).build();
         }
 
-        Response tokenCheckResponse = verifyTokenAndGetEntities(username, data1.tokenId);
+        Response tokenCheckResponse = verifyTokenAndGetEntities(username, data.tokenId);
         if (tokenCheckResponse != null) {
             return tokenCheckResponse;
         }
@@ -332,7 +333,7 @@ public class utilsResource {
         String requesterRole = userEntity.getString("role");
         String targetStatus = targetEntity.getString("status");
 
-        if (requesterRole.equals("ENDUSER") && !username.equals(data1.target)) {
+        if (requesterRole.equals("ENDUSER") && !username.equals(data.target)) {
             return Response.status(Status.FORBIDDEN).entity("You can only modify your own account.").build();
         }
 
@@ -343,13 +344,13 @@ public class utilsResource {
         DefaultUser userData = new DefaultUser();
 
         if (data.email != null) {
-            if (!requesterRole.equals("ADMIN") && !username.equals(data1.target)) {
+            if (!requesterRole.equals("ADMIN") && !username.equals(data.target)) {
                 return Response.status(Status.FORBIDDEN).entity("You are not allowed to change email.").build();
             }
             userData.email = data.email;
         }
         if (data.name != null) {
-            if (!requesterRole.equals("ADMIN") && !username.equals(data1.target)) {
+            if (!requesterRole.equals("ADMIN") && !username.equals(data.target)) {
                 return Response.status(Status.FORBIDDEN).entity("You are not allowed to change name.").build();
             }
             userData.name = data.name;
