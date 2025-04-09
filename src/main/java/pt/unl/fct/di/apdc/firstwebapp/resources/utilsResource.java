@@ -189,6 +189,8 @@ public class utilsResource {
             return tokenCheckResponse;
         }
 
+        targetKey = targetEntity.getKey();
+
         switch (userEntity.getString("role")) {
             case "ADMIN":
                 datastore.delete(targetEntity.getKey());
