@@ -76,11 +76,11 @@ public class utilsResource {
 
                 switch(userEntity.getString("role")){
                     case "ADMIN":
-                        targetEntity = Entity.newBuilder(userEntity).set("role", role).build();
+                        targetEntity = Entity.newBuilder(targetEntity).set("role", role).build();
                         break;
                         case "BACKOFFICE":
                             if(role.equals("PARTNER") || role.equals("ENDUSER")) {
-                                targetEntity = Entity.newBuilder(userEntity).set("role", role).build();
+                                targetEntity = Entity.newBuilder(targetEntity).set("role", role).build();
                             }else return Response.status(Status.BAD_REQUEST).entity("Wrong role to assign").build();
                         break;
 
