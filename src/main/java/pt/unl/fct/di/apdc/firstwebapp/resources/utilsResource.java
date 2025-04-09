@@ -6,8 +6,11 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import com.google.gson.Gson;
+import pt.unl.fct.di.apdc.firstwebapp.util.DefaultUser;
 import pt.unl.fct.di.apdc.firstwebapp.util.Info;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Logger;
 
 @Path("/utils")
@@ -20,7 +23,7 @@ public class utilsResource {
 
     public utilsResource() {}
 
-    private Response verifyTokenAndGetEntities(String username, String tokenId, Info data) {
+    private Response verifyTokenAndGetEntities(String username, String tokenId) {
 
         Query<Entity> query = Query.newEntityQueryBuilder()
                 .setKind("Token")
@@ -61,7 +64,7 @@ public class utilsResource {
             return Response.status(Status.NOT_FOUND).build();
         }
 
-        Response tokenCheckResponse = verifyTokenAndGetEntities(username, data.tokenId, data);
+        Response tokenCheckResponse = verifyTokenAndGetEntities(username, data.tokenId);
         if (tokenCheckResponse != null) {
             return tokenCheckResponse;
         }
@@ -116,7 +119,7 @@ public class utilsResource {
             return Response.status(Status.NOT_FOUND).build();
         }
 
-        Response tokenCheckResponse = verifyTokenAndGetEntities(username, data.tokenId, data);
+        Response tokenCheckResponse = verifyTokenAndGetEntities(username, data.tokenId);
         if (tokenCheckResponse != null) {
             return tokenCheckResponse;
         }
@@ -184,7 +187,7 @@ public class utilsResource {
             return Response.status(Status.NOT_FOUND).build();
         }
 
-        Response tokenCheckResponse = verifyTokenAndGetEntities(username, data.tokenId, data);
+        Response tokenCheckResponse = verifyTokenAndGetEntities(username, data.tokenId);
         if (tokenCheckResponse != null) {
             return tokenCheckResponse;
         }
@@ -232,5 +235,76 @@ public class utilsResource {
         }
 
         return Response.ok().build();
+    }
+
+    @POST
+    @Path("/delete/{username}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response listUsers(@PathParam("username") String username, Info data) {
+
+        Key userKey = datastore.newKeyFactory().setKind("User").newKey(username);
+        Entity userEntity = datastore.get(userKey);
+
+
+        if (userEntity == null) {
+            return Response.status(Status.NOT_FOUND).build();
+        }
+
+        Response tokenCheckResponse = verifyTokenAndGetEntities(username, data.tokenId);
+        if (tokenCheckResponse != null) {
+            return tokenCheckResponse;
+        }
+
+        String requesterRole = userEntity.getString("role");
+
+        StructuredQuery.Builder<Entity> queryBuilder = Query.newEntityQueryBuilder().setKind("User");
+
+        switch (requesterRole) {
+            case "ENDUSER":
+                queryBuilder.setFilter(StructuredQuery.CompositeFilter.and(
+                        StructuredQuery.PropertyFilter.eq("role", "ENDUSER"),
+                        StructuredQuery.PropertyFilter.eq("perfil", "PUBLICO"),
+                        StructuredQuery.PropertyFilter.eq("status", "ATIVADA")
+                ));
+                break;
+
+            case "BACKOFFICE":
+                queryBuilder.setFilter(StructuredQuery.PropertyFilter.eq("role", "ENDUSER"));
+                break;
+        }
+
+        Query<Entity> query = queryBuilder.build();
+        QueryResults<Entity> results = datastore.run(query);
+
+        List<DefaultUser> userList = new ArrayList<>();
+
+        while (results.hasNext()) {
+            Entity u = results.next();
+            DefaultUser userData = new DefaultUser();
+
+            userData.username = u.getKey().getName();
+
+            if (requesterRole.equals("ENDUSER")) {
+                if (u.contains("email")) userData.email = u.getString("email");
+                if (u.contains("name")) userData.name = u.getString("name");
+            } else {
+                if (u.contains("email")) userData.email = u.getString("email");
+                if (u.contains("name")) userData.name = u.getString("name");
+                if (u.contains("role")) userData.role = u.getString("role");
+                if (u.contains("profile")) userData.perfil = u.getString("profile");
+                if (u.contains("status")) userData.status = u.getString("status");
+                if (u.contains("phone")) userData.phone = u.getString("phone");
+                if (u.contains("address")) userData.address = u.getString("address");
+                if (u.contains("nif")) userData.nif = u.getString("nif");
+                if (u.contains("employer")) userData.employer = u.getString("employer");
+                if (u.contains("function")) userData.function = u.getString("function");
+                if (u.contains("nifEmp")) userData.nifEmp = u.getString("nifEmp");
+                if (u.contains("cc")) userData.cc = u.getString("cc");
+            }
+
+            userList.add(userData);
+        }
+
+        return Response.ok(g.toJson(userList)).build();
     }
 }
