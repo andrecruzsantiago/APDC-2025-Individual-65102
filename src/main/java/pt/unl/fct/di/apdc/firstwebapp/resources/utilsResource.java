@@ -81,7 +81,8 @@ public class utilsResource {
                 targetEntity = Entity.newBuilder(targetEntity).set("role", role).build();
                 break;
             case "BACKOFFICE":
-                if (role.equals("PARTNER") || role.equals("ENDUSER")) {
+                if ((role.equals("PARTNER") || role.equals("ENDUSER")) &&
+                    (targetEntity.getString("role").equals("PARTNER") || targetEntity.getString("role").equals("ENDUSER"))) {
                     targetEntity = Entity.newBuilder(targetEntity).set("role", role).build();
                 } else {
                     return Response.status(Status.BAD_REQUEST).entity("Wrong role to assign").build();
@@ -119,21 +120,22 @@ public class utilsResource {
         Key userKey = datastore.newKeyFactory().setKind("User").newKey(username);
         Entity userEntity = datastore.get(userKey);
 
-        String role = data.param;
+        String status = data.param;
 
-        if (!role.equals("ADMIN") && !role.equals("ENDUSER") && !role.equals("BACKOFFICE") && !role.equals("PARTNER")) {
+        if (!status.equals("DESATIVADA") && !status.equals("ATIVADA") && !status.equals("SUSPENSA")) {
             return Response.status(Status.BAD_REQUEST).entity("Wrong role to assign").build();
         }
 
         switch (userEntity.getString("role")) {
             case "ADMIN":
-                targetEntity = Entity.newBuilder(targetEntity).set("role", role).build();
+                targetEntity = Entity.newBuilder(targetEntity).set("status", status).build();
                 break;
             case "BACKOFFICE":
-                if (role.equals("PARTNER") || role.equals("ENDUSER")) {
-                    targetEntity = Entity.newBuilder(targetEntity).set("role", role).build();
+                if ((status.equals("DESATIVADA") || status.equals("ATIVADA")) &&
+                        (targetEntity.getString("status").equals("ATIVADA") || targetEntity.getString("status").equals("DESATIVADA"))) {
+                    targetEntity = Entity.newBuilder(targetEntity).set("status", status).build();
                 } else {
-                    return Response.status(Status.BAD_REQUEST).entity("Wrong role to assign").build();
+                    return Response.status(Status.BAD_REQUEST).entity("Wrong status to assign").build();
                 }
                 break;
         }
@@ -151,4 +153,5 @@ public class utilsResource {
                 txn.rollback();
             }
         }
+    }
 }
