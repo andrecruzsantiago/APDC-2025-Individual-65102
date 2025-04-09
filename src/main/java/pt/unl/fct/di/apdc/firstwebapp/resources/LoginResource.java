@@ -69,6 +69,7 @@ public class LoginResource {
 		}
 
 		String realUsername = userEntity.getKey().getName();
+		String usernameRole = userEntity.getString("role");
 		AuthToken token = new AuthToken(realUsername);
 		Key tokenKey = datastore.newKeyFactory().addAncestor(PathElement.of("User",realUsername)).setKind("Token").newKey(token.validator);
 
@@ -76,6 +77,7 @@ public class LoginResource {
 				.set("validfrom", token.validFrom.toString())
 				.set("validTo", token.validTo.toString())
 				.set("user", token.username)
+				.set("role", usernameRole)
 				.build();
 
 		datastore.put(tokenEntity);
