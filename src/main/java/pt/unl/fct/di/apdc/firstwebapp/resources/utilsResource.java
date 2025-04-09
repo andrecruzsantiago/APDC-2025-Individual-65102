@@ -59,11 +59,11 @@ public class utilsResource {
 
             } else {
                 Entity newUserEntity = existingUser.next();
-                if(newUserEntity.getLong("validTo") >= System.currentTimeMillis()) {
+                if(newUserEntity.getLong("validTo") < System.currentTimeMillis()) {
                     datastore.delete(newUserEntity.getKey());
                     return Response.status(Status.BAD_REQUEST).entity("You have to login again").build();
                 }
-                if(!newUserEntity.getKey().toString().equals(username)) {
+                if(!newUserEntity.getKey().getName().equals(username)) {
                     txn.rollback();
                     return  Response.status(Status.FORBIDDEN).entity("The token is not yours.").build();
                 }
