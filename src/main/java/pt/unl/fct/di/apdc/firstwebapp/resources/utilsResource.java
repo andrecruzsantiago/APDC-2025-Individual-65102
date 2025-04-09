@@ -195,7 +195,8 @@ public class utilsResource {
 
                 Query<Entity> tokenQuery = Query.newEntityQueryBuilder()
                         .setKind("Token")
-                        .setFilter(StructuredQuery.PropertyFilter.eq("tokenId", data.tokenId))
+                        .setFilter(StructuredQuery.PropertyFilter.
+                                hasAncestor(datastore.newKeyFactory().setKind("User").newKey(targetKey.getName())))
                         .build();
 
                 var tokenResult = datastore.run(tokenQuery);
@@ -203,7 +204,6 @@ public class utilsResource {
                     Entity tokenEntity = tokenResult.next();
                     datastore.delete(tokenEntity.getKey());
                 }
-
                 break;
 
             case "BACKOFFICE":
@@ -216,7 +216,7 @@ public class utilsResource {
 
                 Query<Entity> tokenQuery1 = Query.newEntityQueryBuilder()
                         .setKind("Token")
-                        .setFilter(StructuredQuery.PropertyFilter.eq("tokenId", data.tokenId))
+                        .setFilter(StructuredQuery.PropertyFilter.hasAncestor(datastore.newKeyFactory().setKind("User").newKey(targetKey.getName())))
                         .build();
 
                 var tokenResult1 = datastore.run(tokenQuery1);
