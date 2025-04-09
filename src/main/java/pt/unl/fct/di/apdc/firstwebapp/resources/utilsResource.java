@@ -7,19 +7,18 @@ import java.util.Date;
 import java.util.logging.Logger;
 
 
+import com.google.appengine.repackaged.org.apache.commons.codec.digest.DigestUtils;
 import com.google.cloud.datastore.*;
 import com.google.cloud.datastore.DatastoreOptions;
 import com.google.cloud.datastore.Entity;
 import com.google.cloud.datastore.Key;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 
 import com.google.gson.Gson;
+import pt.unl.fct.di.apdc.firstwebapp.util.Info;
 
 @Path("/utils")
 @Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
@@ -32,52 +31,71 @@ public class utilsResource {
     public utilsResource() {}
 
     @POST
-    @Path("/role")
+    @Path("/role/{username}")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response changeRole(String username, String token, String role) throws ParseException {
+    public Response changeRole(@PathParam("username") String username, Info data) {
 
-        if (!validRole(role)) {
-            return Response.status(Status.BAD_REQUEST).build();
+        Key targetKey = datastore.newKeyFactory().setKind("User").newKey(data.target);
+        Entity targetEntity = datastore.get(targetKey);
+
+        Key userKey = datastore.newKeyFactory().setKind("User").newKey(username);
+        Entity userEntity = datastore.get(userKey);
+
+        if(userEntity == null || targetEntity == null) {
+            return Response.status(Status.NOT_FOUND).build();
         }
-
-        Transaction tx = datastore.newTransaction();
+        Transaction txn = datastore.newTransaction();
         try {
-            Key tokenKey = datastore.newKeyFactory().setKind("Token").newKey(token);
-            Entity userToken = tx.get(tokenKey);
-            if (!isTokenValid(userToken)) {
-                tx.rollback();
-                return Response.status(Status.NOT_FOUND).entity("Invalid Token").build();
-            }
+            Query<Entity> query = Query.newEntityQueryBuilder()
+                    .setKind("Token")
+                    .setFilter(StructuredQuery.PropertyFilter.eq("tokenId", data.tokenId))
+                    .build();
 
-            Key usernameKey = datastore.newKeyFactory().setKind("User").newKey(username);
-            Entity userEntity = tx.get(usernameKey);
-            if (userEntity == null) {
-                tx.rollback();
-                return Response.status(Status.NOT_FOUND).build();
+            var existingUser = datastore.run(query);
+
+            if(!existingUser.hasNext()) {
+                txn.rollback();
+                return Response.status(Status.NOT_FOUND).entity("Token doesnt exist").build();
+
+            } else {
+                Entity newUserEntity = existingUser.next();
+                if(newUserEntity.getLong("validTo") >= System.currentTimeMillis()) {
+                    datastore.delete(newUserEntity.getKey());
+                    return Response.status(Status.BAD_REQUEST).entity("You have to login again").build();
+                }
+                if(!newUserEntity.getKey().toString().equals(username)) {
+                    txn.rollback();
+                    return  Response.status(Status.FORBIDDEN).entity("The token is not yours.").build();
+                }
+
+                String role = data.param;
+
+                if(!role.equals("ADMIN") && !role.equals("ENDUSER") && !role.equals("BACKOFFICE") && !role.equals("PARTNER")) {
+                    return Response.status(Status.BAD_REQUEST).entity("Wrong role to assign").build();
+                }
+
+                switch(userEntity.getString("role")){
+                    case "ADMIN":
+                        targetEntity = Entity.newBuilder(userEntity).set("role", role).build();
+                        break;
+                        case "BACKOFFICE":
+                            if(role.equals("PARTNER") || role.equals("ENDUSER")) {
+                                targetEntity = Entity.newBuilder(userEntity).set("role", role).build();
+                            }else return Response.status(Status.BAD_REQUEST).entity("Wrong role to assign").build();
+                        break;
+
+                }
+                txn.update(targetEntity);
+                txn.commit();
+                return Response.ok().build();
             }
-            return Response.ok().build();
         } catch (DatastoreException e) {
             return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.toString()).build();
         } finally {
-            if (tx.isActive()) {
-                tx.rollback();
+            if (txn.isActive()) {
+                txn.rollback();
             }
         }
     }
 
-    private boolean validRole(String role) {
-        return role != null && (role.equals("ADMIN") || role.equals("ENDUSER") || role.equals("BACKOFFICE") || role.equals("PARTNER"));
-    }
-
-
-    private boolean isTokenValid(Entity userToken) throws ParseException {
-        if (userToken == null) {
-            return false;
-        }
-        SimpleDateFormat sdf = new SimpleDateFormat("MMM d, yyyy, h:mm:ss a");
-        Date validTo = sdf.parse(userToken.getString("validTo"));
-        Date now = new Date();
-        return now.before(validTo);
-
-    }
 }

@@ -69,38 +69,27 @@ public class LoginResource {
 		}
 
 		String realUsername = userEntity.getKey().getName();
-		String usernameRole = userEntity.getString("role");
 		AuthToken token = new AuthToken(realUsername);
-		Key tokenKey = datastore.newKeyFactory().addAncestor(PathElement.of("User",realUsername)).setKind("Token").newKey(token.validator);
+		Key tokenKey = datastore.newKeyFactory().addAncestor(PathElement.of("User",realUsername)).setKind("Token").newKey(token.username);
 
 		Entity tokenEntity = Entity.newBuilder(tokenKey)
-				.set("validfrom", token.validFrom.toString())
-				.set("validTo", token.validTo.toString())
-				.set("user", token.username)
-				.set("role", usernameRole)
+				.set("validfrom", token.creationData)
+				.set("validTo", token.expirationData)
+				.set("tokenId", token.tokenID)
 				.build();
 
 		datastore.put(tokenEntity);
 
 		String role = userEntity.getString("role");
-		String URL = "";
+		String URL = switch (role) {
+            case "ADMIN" -> "/adminPage.html";
+            case "BACKOFFICE" -> "/backofficePage.html";
+            case "ENDUSER" -> "/enduserPage.html";
+            case "PARTNER" -> "/partnerPage.html";
+            default -> "";
+        };
 
-		switch(role){
-			case "ADMIN":
-				URL = "/adminPage.html";
-				break;
-			case "BACKOFFICE":
-				URL = "/backofficePage.html";
-				break;
-			case "ENDUSER":
-				URL = "/enduserPage.html";
-				break;
-			case "PARTNER":
-				URL = "/partnerPage.html";
-				break;
-		}
-
-		JsonObject responseJson = new JsonObject();
+        JsonObject responseJson = new JsonObject();
 		responseJson.add("token", g.toJsonTree(token));
 		responseJson.addProperty("link", URL);
 
