@@ -40,30 +40,71 @@ public class CreateUserResource {
         }
 
         Transaction txn = datastore.newTransaction();
-        try{
-            Key userKey = datastore.newKeyFactory().setKind("User").newKey(data.username);
-            Entity user = txn.get(userKey);
-            if(user != null) {
+        try {
+            Query<Entity> query = Query.newEntityQueryBuilder()
+                    .setKind("User")
+                    .setFilter(StructuredQuery.PropertyFilter.eq("email", data.email))
+                    .build();
+
+            var existingUser = datastore.run(query);
+
+            if(existingUser.hasNext()) {
                 txn.rollback();
-                return Response.status(Status.CONFLICT).entity("User already exists.").build();
-            }else{
-                user = Entity.newBuilder(userKey).set("email", data.email)
-                        .set("name", data.name).set("phone", data.phone)
+                return Response.status(Status.CONFLICT).entity("Email already exists.").build();
+            } else {
+                Key userKey = datastore.newKeyFactory().setKind("User").newKey(data.username);
+                Entity username = txn.get(userKey);
+
+                if (username != null) {
+                    txn.rollback();
+                    return Response.status(Status.CONFLICT).entity("Username already exists.").build();
+                }
+
+                Entity.Builder userBuilder = Entity.newBuilder(userKey)
+                        .set("email", data.email)
+                        .set("name", data.name)
+                        .set("phone", data.phone)
                         .set("password", DigestUtils.sha512Hex(data.password))
-                        .set("perfil",data.perfil).build();
+                        .set("perfil", data.perfil)
+                        .set("status", "DESATIVADA")
+                        .set("role", "ENDUSER");
+
+                if (data.cc != null) {
+                    userBuilder.set("cc", data.cc);
+                }
+                if (data.nif != null) {
+                    userBuilder.set("nif", data.nif);
+                }
+                if (data.employee != null) {
+                    userBuilder.set("employee", data.employee);
+                }
+                if (data.function != null) {
+                    userBuilder.set("function", data.function);
+                }
+                if (data.address != null) {
+                    userBuilder.set("address", data.address);
+                }
+                if (data.nifEmp != null) {
+                    userBuilder.set("nifEmp", data.nifEmp);
+                }
+                if (data.photo != null) {
+                    userBuilder.set("photo", data.photo);
+                }
+
+                Entity user = userBuilder.build();
+
                 txn.put(user);
                 txn.commit();
                 LOG.info("Created user: " + data.username);
                 return Response.ok().build();
             }
-        }catch(DatastoreException e){
+        } catch (DatastoreException e) {
             return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.toString()).build();
-        }finally{
-            if(txn.isActive()){
+        } finally {
+            if (txn.isActive()) {
                 txn.rollback();
             }
         }
     }
-
 
 }

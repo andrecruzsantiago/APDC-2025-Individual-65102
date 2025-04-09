@@ -1,25 +1,25 @@
 package pt.unl.fct.di.apdc.firstwebapp.util;
 
-import java.util.UUID;
+import java.security.SecureRandom;
+import java.util.Date;
 
 public class AuthToken {
-
-	public static final long EXPIRATION_TIME = 1000*60*60*2;
 	
 	public String username;
-	public String tokenID;
-	public long creationData;
-	public long expirationData;
+	public Date validFrom;
+	public Date validTo;
+	public String validator;
 	
-	public AuthToken() {
-
+	public AuthToken(String user) {
+		username = user;
+		validFrom = new Date();
+		validTo = new Date(validFrom.getTime() + 1000 * 60 * 5);
+		validator = Long.toHexString(new SecureRandom().nextLong());
 	}
-	
-	public AuthToken(String username) {
-		this.username = username;
-		this.tokenID = UUID.randomUUID().toString();
-		this.creationData = System.currentTimeMillis();
-		this.expirationData = this.creationData - EXPIRATION_TIME;
+
+	public boolean validate(){
+		Date now = new Date();
+		return 	now.before(validTo);
 	}
 	
 }
