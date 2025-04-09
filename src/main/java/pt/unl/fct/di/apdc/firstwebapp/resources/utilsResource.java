@@ -93,7 +93,7 @@ public class utilsResource {
         try {
             txn.update(targetEntity);
             txn.commit();
-            return Response.ok().build();
+            return Response.status(Status.ACCEPTED).entity("Role updated successfully:"+data.target+" ->"+data.param).build();
         } catch (DatastoreException e) {
             txn.rollback();
             return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.toString()).build();
@@ -148,7 +148,7 @@ public class utilsResource {
         try {
             txn.update(targetEntity);
             txn.commit();
-            return Response.ok().build();
+            return Response.status(Status.ACCEPTED).entity("Status updated successfully:"+data.target+" ->"+data.param).build();
         } catch (DatastoreException e) {
             txn.rollback();
             return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.toString()).build();
@@ -234,7 +234,7 @@ public class utilsResource {
 
         }
 
-        return Response.ok().build();
+        return Response.status(Status.ACCEPTED).entity("User deleted:"+data.target).build();
     }
 
     @POST
@@ -307,5 +307,98 @@ public class utilsResource {
         }
 
         return Response.ok(g.toJson(userList)).build();
+    }
+
+    @POST
+    @Path("/change/{username}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response update(@PathParam("username") String username,Info data1, DefaultUser data) {
+
+        Key userKey = datastore.newKeyFactory().setKind("User").newKey(username);
+        Entity userEntity = datastore.get(userKey);
+
+        Key targetKey = datastore.newKeyFactory().setKind("User").newKey(data1.target);
+        Entity targetEntity = datastore.get(targetKey);
+
+        if (userEntity == null || targetEntity == null) {
+            return Response.status(Status.NOT_FOUND).build();
+        }
+
+        Response tokenCheckResponse = verifyTokenAndGetEntities(username, data1.tokenId);
+        if (tokenCheckResponse != null) {
+            return tokenCheckResponse;
+        }
+
+        String requesterRole = userEntity.getString("role");
+        String targetStatus = targetEntity.getString("status");
+
+        if (requesterRole.equals("ENDUSER") && !username.equals(data1.target)) {
+            return Response.status(Status.FORBIDDEN).entity("You can only modify your own account.").build();
+        }
+
+        if (requesterRole.equals("BACKOFFICE") && !targetStatus.equals("ATIVADA")) {
+            return Response.status(Status.FORBIDDEN).entity("You can only modify activated accounts.").build();
+        }
+
+        DefaultUser userData = new DefaultUser();
+
+        if (data.email != null) {
+            if (!requesterRole.equals("ADMIN") && !username.equals(data1.target)) {
+                return Response.status(Status.FORBIDDEN).entity("You are not allowed to change email.").build();
+            }
+            userData.email = data.email;
+        }
+        if (data.name != null) {
+            if (!requesterRole.equals("ADMIN") && !username.equals(data1.target)) {
+                return Response.status(Status.FORBIDDEN).entity("You are not allowed to change name.").build();
+            }
+            userData.name = data.name;
+        }
+
+        if (data.role != null && (requesterRole.equals("ADMIN") || requesterRole.equals("BACKOFFICE"))) {
+            userData.role = data.role;
+        }
+        if (data.status != null && requesterRole.equals("ADMIN")) {
+            userData.status = data.status;
+        }
+
+        // Atributos opcionais
+        if (data.perfil != null) userData.perfil = data.perfil;
+        if (data.phone != null) userData.phone = data.phone;
+        if (data.address != null) userData.address = data.address;
+        if (data.nif != null) userData.nif = data.nif;
+        if (data.employer != null) userData.employer = data.employer;
+        if (data.function != null) userData.function = data.function;
+        if (data.nifEmp != null) userData.nifEmp = data.nifEmp;
+        if (data.cc != null) userData.cc = data.cc;
+
+        // Atualizar os dados no targetEntity
+        Transaction txn = datastore.newTransaction();
+        try {
+            if (userData.email != null) targetEntity = Entity.newBuilder(targetEntity).set("email", userData.email).build();
+            if (userData.name != null) targetEntity = Entity.newBuilder(targetEntity).set("name", userData.name).build();
+            if (userData.role != null) targetEntity = Entity.newBuilder(targetEntity).set("role", userData.role).build();
+            if (userData.status != null) targetEntity = Entity.newBuilder(targetEntity).set("status", userData.status).build();
+            if (userData.perfil != null) targetEntity = Entity.newBuilder(targetEntity).set("profile", userData.perfil).build();
+            if (userData.phone != null) targetEntity = Entity.newBuilder(targetEntity).set("phone", userData.phone).build();
+            if (userData.address != null) targetEntity = Entity.newBuilder(targetEntity).set("address", userData.address).build();
+            if (userData.nif != null) targetEntity = Entity.newBuilder(targetEntity).set("nif", userData.nif).build();
+            if (userData.employer != null) targetEntity = Entity.newBuilder(targetEntity).set("employer", userData.employer).build();
+            if (userData.function != null) targetEntity = Entity.newBuilder(targetEntity).set("function", userData.function).build();
+            if (userData.nifEmp != null) targetEntity = Entity.newBuilder(targetEntity).set("nifEmp", userData.nifEmp).build();
+            if (userData.cc != null) targetEntity = Entity.newBuilder(targetEntity).set("cc", userData.cc).build();
+
+            txn.update(targetEntity);
+            txn.commit();
+
+            return Response.ok().build();
+        } catch (DatastoreException e) {
+            txn.rollback();
+            return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.toString()).build();
+        } finally {
+            if (txn.isActive()) {
+                txn.rollback();
+            }
+        }
     }
 }
