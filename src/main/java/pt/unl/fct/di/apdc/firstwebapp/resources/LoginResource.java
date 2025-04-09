@@ -79,9 +79,31 @@ public class LoginResource {
 				.build();
 
 		datastore.put(tokenEntity);
+
+		String role = userEntity.getString("role");
+		String URL = "";
+
+		switch(role){
+			case "ADMIN":
+				URL = "/adminPage.html";
+				break;
+			case "BACKOFFICE":
+				URL = "/backofficePage.html";
+				break;
+			case "ENDUSER":
+				URL = "/enduserPage.html";
+				break;
+			case "PARTNER":
+				URL = "/partnerPage.html";
+				break;
+		}
+
 		JsonObject responseJson = new JsonObject();
 		responseJson.add("token", g.toJsonTree(token));
-		responseJson.addProperty("role", userEntity.getString("role"));
-		return Response.ok(responseJson.toString()).build();
+		responseJson.addProperty("link", URL);
+		return Response.status(Status.SEE_OTHER)
+				.header("Location", URL)
+				.entity(responseJson.toString())
+				.build();
 	}
 }
