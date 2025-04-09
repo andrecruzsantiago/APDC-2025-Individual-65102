@@ -101,9 +101,8 @@ public class LoginResource {
 		JsonObject responseJson = new JsonObject();
 		responseJson.add("token", g.toJsonTree(token));
 		responseJson.addProperty("link", URL);
-		return Response.status(Status.SEE_OTHER)
-				.header("Location", URL)
-				.entity(responseJson.toString())
+
+		return Response.ok(responseJson.toString())
 				.build();
 	}
 }
