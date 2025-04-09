@@ -16,19 +16,7 @@ public class DefaultUser {
     public String cc;
 
     public DefaultUser() {
-        this.username = "NOT DEFINED";
-        this.email = "NOT DEFINED";
-        this.name = "NOT DEFINED";
-        this.role = "NOT DEFINED";
-        this.perfil = "NOT DEFINED";
-        this.status = "NOT DEFINED";
-        this.phone = "NOT DEFINED";
-        this.address = "NOT DEFINED";
-        this.nif = "NOT DEFINED";
-        this.nifEmp = "NOT DEFINED";
-        this.employer = "NOT DEFINED";
-        this.function = "NOT DEFINED";
-        this.cc = "NOT DEFINED";
+
     }
 }
 

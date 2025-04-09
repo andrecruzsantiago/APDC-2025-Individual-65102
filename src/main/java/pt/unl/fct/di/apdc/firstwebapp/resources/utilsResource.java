@@ -238,7 +238,7 @@ public class utilsResource {
     }
 
     @POST
-    @Path("/delete/{username}")
+    @Path("/listUsers/{username}")
     @Consumes(MediaType.APPLICATION_JSON)
     public Response listUsers(@PathParam("username") String username, Info data) {
 
@@ -263,7 +263,7 @@ public class utilsResource {
             case "ENDUSER":
                 queryBuilder.setFilter(StructuredQuery.CompositeFilter.and(
                         StructuredQuery.PropertyFilter.eq("role", "ENDUSER"),
-                        StructuredQuery.PropertyFilter.eq("perfil", "PUBLICO"),
+                        StructuredQuery.PropertyFilter.eq("perfil", "publico"),
                         StructuredQuery.PropertyFilter.eq("status", "ATIVADA")
                 ));
                 break;
@@ -285,22 +285,23 @@ public class utilsResource {
             userData.username = u.getKey().getName();
 
             if (requesterRole.equals("ENDUSER")) {
-                if (u.contains("email")) userData.email = u.getString("email");
-                if (u.contains("name")) userData.name = u.getString("name");
+                if (u.contains("email")) userData.email = u.getString("email"); else userData.email = "NOT DEFINED";
+                if (u.contains("name")) userData.name = u.getString("name"); else userData.name = "NOT DEFINED";
             } else {
-                if (u.contains("email")) userData.email = u.getString("email");
-                if (u.contains("name")) userData.name = u.getString("name");
-                if (u.contains("role")) userData.role = u.getString("role");
-                if (u.contains("profile")) userData.perfil = u.getString("profile");
-                if (u.contains("status")) userData.status = u.getString("status");
-                if (u.contains("phone")) userData.phone = u.getString("phone");
-                if (u.contains("address")) userData.address = u.getString("address");
-                if (u.contains("nif")) userData.nif = u.getString("nif");
-                if (u.contains("employer")) userData.employer = u.getString("employer");
-                if (u.contains("function")) userData.function = u.getString("function");
-                if (u.contains("nifEmp")) userData.nifEmp = u.getString("nifEmp");
-                if (u.contains("cc")) userData.cc = u.getString("cc");
+                if (u.contains("email")) userData.email = u.getString("email"); else userData.email = "NOT DEFINED";
+                if (u.contains("name")) userData.name = u.getString("name"); else userData.name = "NOT DEFINED";
+                if (u.contains("role")) userData.role = u.getString("role"); else userData.role = "NOT DEFINED";
+                if (u.contains("profile")) userData.perfil = u.getString("profile"); else userData.perfil = "NOT DEFINED";
+                if (u.contains("status")) userData.status = u.getString("status"); else userData.status = "NOT DEFINED";
+                if (u.contains("phone")) userData.phone = u.getString("phone"); else userData.phone = "NOT DEFINED";
+                if (u.contains("address")) userData.address = u.getString("address"); else userData.address = "NOT DEFINED";
+                if (u.contains("nif")) userData.nif = u.getString("nif"); else userData.nif = "NOT DEFINED";
+                if (u.contains("employer")) userData.employer = u.getString("employer"); else userData.employer = "NOT DEFINED";
+                if (u.contains("function")) userData.function = u.getString("function"); else userData.function = "NOT DEFINED";
+                if (u.contains("nifEmp")) userData.nifEmp = u.getString("nifEmp"); else userData.nifEmp = "NOT DEFINED";
+                if (u.contains("cc")) userData.cc = u.getString("cc"); else userData.cc = "NOT DEFINED";
             }
+
 
             userList.add(userData);
         }
