@@ -21,7 +21,6 @@ import pt.unl.fct.di.apdc.firstwebapp.util.AuthToken;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
-
 @Path("/login")
 @Produces(MediaType.APPLICATION_JSON + ";charset=utf-8")
 public class LoginResource {
@@ -68,14 +67,15 @@ public class LoginResource {
 		if (!storedPassword.equals(DigestUtils.sha512Hex(data.password))) {
 			return Response.status(Status.UNAUTHORIZED).entity("Invalid password.").build();
 		}
+
 		String realUsername = userEntity.getKey().getName();
 		AuthToken token = new AuthToken(realUsername);
-		Key tokenKey = datastore.newKeyFactory().addAncestor(PathElement.of("User",realUsername)).setKind("Token").newKey(realUsername);
+		Key tokenKey = datastore.newKeyFactory().addAncestor(PathElement.of("User",realUsername)).setKind("Token").newKey(token.validator);
 
 		Entity tokenEntity = Entity.newBuilder(tokenKey)
 				.set("validfrom", token.validFrom.toString())
 				.set("validTo", token.validTo.toString())
-				.set("magicNumber", token.validator)
+				.set("user", token.username)
 				.build();
 
 		datastore.put(tokenEntity);

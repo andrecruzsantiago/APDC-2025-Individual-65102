@@ -17,9 +17,5 @@ public class AuthToken {
 		validator = Long.toHexString(new SecureRandom().nextLong());
 	}
 
-	public boolean validate(){
-		Date now = new Date();
-		return 	now.before(validTo);
-	}
 	
 }
