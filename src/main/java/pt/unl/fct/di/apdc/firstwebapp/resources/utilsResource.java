@@ -21,15 +21,6 @@ public class utilsResource {
     public utilsResource() {}
 
     private Response verifyTokenAndGetEntities(String username, String tokenId, Info data) {
-        Key userKey = datastore.newKeyFactory().setKind("User").newKey(username);
-        Entity userEntity = datastore.get(userKey);
-
-        Key targetKey = datastore.newKeyFactory().setKind("User").newKey(data.target);
-        Entity targetEntity = datastore.get(targetKey);
-
-        if (userEntity == null || targetEntity == null) {
-            return Response.status(Status.NOT_FOUND).build();
-        }
 
         Query<Entity> query = Query.newEntityQueryBuilder()
                 .setKind("Token")
@@ -60,15 +51,20 @@ public class utilsResource {
     @Consumes(MediaType.APPLICATION_JSON)
     public Response changeRole(@PathParam("username") String username, Info data) {
 
+        Key userKey = datastore.newKeyFactory().setKind("User").newKey(username);
+        Entity userEntity = datastore.get(userKey);
+
+        Key targetKey = datastore.newKeyFactory().setKind("User").newKey(data.target);
+        Entity targetEntity = datastore.get(targetKey);
+
+        if (userEntity == null || targetEntity == null) {
+            return Response.status(Status.NOT_FOUND).build();
+        }
+
         Response tokenCheckResponse = verifyTokenAndGetEntities(username, data.tokenId, data);
         if (tokenCheckResponse != null) {
             return tokenCheckResponse;
         }
-
-        Key targetKey = datastore.newKeyFactory().setKind("User").newKey(data.target);
-        Entity targetEntity = datastore.get(targetKey);
-        Key userKey = datastore.newKeyFactory().setKind("User").newKey(username);
-        Entity userEntity = datastore.get(userKey);
 
         String role = data.param;
 
@@ -110,15 +106,20 @@ public class utilsResource {
     @Consumes(MediaType.APPLICATION_JSON)
     public Response changeStatus(@PathParam("username") String username, Info data) {
 
+        Key userKey = datastore.newKeyFactory().setKind("User").newKey(username);
+        Entity userEntity = datastore.get(userKey);
+
+        Key targetKey = datastore.newKeyFactory().setKind("User").newKey(data.target);
+        Entity targetEntity = datastore.get(targetKey);
+
+        if (userEntity == null || targetEntity == null) {
+            return Response.status(Status.NOT_FOUND).build();
+        }
+
         Response tokenCheckResponse = verifyTokenAndGetEntities(username, data.tokenId, data);
         if (tokenCheckResponse != null) {
             return tokenCheckResponse;
         }
-
-        Key targetKey = datastore.newKeyFactory().setKind("User").newKey(data.target);
-        Entity targetEntity = datastore.get(targetKey);
-        Key userKey = datastore.newKeyFactory().setKind("User").newKey(username);
-        Entity userEntity = datastore.get(userKey);
 
         String status = data.param;
 
@@ -153,5 +154,81 @@ public class utilsResource {
                 txn.rollback();
             }
         }
+    }
+
+    @POST
+    @Path("/delete/{username}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response deleteAccount(@PathParam("username") String username, Info data) {
+
+        Key userKey = datastore.newKeyFactory().setKind("User").newKey(username);
+        Entity userEntity = datastore.get(userKey);
+
+        Key targetKey = datastore.newKeyFactory().setKind("User").newKey(data.target);
+        Entity targetEntity = datastore.get(targetKey);
+
+        if (targetEntity == null) {
+            Query<Entity> query = Query.newEntityQueryBuilder()
+                    .setKind("User")
+                    .setFilter(StructuredQuery.PropertyFilter.eq("email", data.target))
+                    .build();
+
+            var existingUser = datastore.run(query);
+            if (existingUser.hasNext()) {
+                targetEntity = existingUser.next();
+            }
+        }
+
+
+        if (userEntity == null || targetEntity == null) {
+            return Response.status(Status.NOT_FOUND).build();
+        }
+
+        Response tokenCheckResponse = verifyTokenAndGetEntities(username, data.tokenId, data);
+        if (tokenCheckResponse != null) {
+            return tokenCheckResponse;
+        }
+
+        switch (userEntity.getString("role")) {
+            case "ADMIN":
+                datastore.delete(targetEntity.getKey());
+
+                Query<Entity> tokenQuery = Query.newEntityQueryBuilder()
+                        .setKind("Token")
+                        .setFilter(StructuredQuery.PropertyFilter.eq("tokenId", data.tokenId))
+                        .build();
+
+                var tokenResult = datastore.run(tokenQuery);
+                if (tokenResult.hasNext()) {
+                    Entity tokenEntity = tokenResult.next();
+                    datastore.delete(tokenEntity.getKey());
+                }
+
+                break;
+
+            case "BACKOFFICE":
+                String targetRole = targetEntity.getString("role");
+                if (!targetRole.equals("ENDUSER") && !targetRole.equals("PARTNER")) {
+                    return Response.status(Status.BAD_REQUEST).entity("You cannot delete a user who is not ENDUSER or PARTNER").build();
+                }
+
+                datastore.delete(targetEntity.getKey());
+
+                Query<Entity> tokenQuery1 = Query.newEntityQueryBuilder()
+                        .setKind("Token")
+                        .setFilter(StructuredQuery.PropertyFilter.eq("tokenId", data.tokenId))
+                        .build();
+
+                var tokenResult1 = datastore.run(tokenQuery1);
+                if (tokenResult1.hasNext()) {
+                    Entity tokenEntity = tokenResult1.next();
+                    datastore.delete(tokenEntity.getKey());
+                }
+
+                break;
+
+        }
+
+        return Response.ok().build();
     }
 }
