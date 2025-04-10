@@ -96,7 +96,7 @@ public class CreateUserResource {
                 txn.put(user);
                 txn.commit();
                 LOG.info("Created user: " + data.username);
-                return Response.ok().build();
+                return Response.status(Status.CREATED).entity("Created user:"+data.username).build();
             }
         } catch (DatastoreException e) {
             return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.toString()).build();
