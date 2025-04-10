@@ -7,10 +7,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import com.google.gson.Gson;
-import pt.unl.fct.di.apdc.firstwebapp.util.ChangeRequest;
-import pt.unl.fct.di.apdc.firstwebapp.util.DefaultUser;
-import pt.unl.fct.di.apdc.firstwebapp.util.Info;
-import pt.unl.fct.di.apdc.firstwebapp.util.PassInfo;
+import pt.unl.fct.di.apdc.firstwebapp.util.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -447,7 +444,7 @@ public class utilsResource {
     @POST
     @Path("/logout/{username}")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response logout(@PathParam("username") String username) {
+    public Response logout(@PathParam("username") String username, Info data) {
 
         Key userKey = datastore.newKeyFactory().setKind("User").newKey(username);
         Entity userEntity = datastore.get(userKey);
@@ -456,16 +453,22 @@ public class utilsResource {
             return Response.status(Status.NOT_FOUND).entity("Not a available user to logout.").build();
         }
 
-        Key tokenKey = datastore.newKeyFactory().setKind("Token").newKey(username);
-        Entity tokenEntity = datastore.get(tokenKey);
+        Query<Entity> query = Query.newEntityQueryBuilder()
+                .setKind("Token")
+                .setFilter(StructuredQuery.PropertyFilter.eq("tokenId", data.tokenId))
+                .build();
 
-        if (tokenEntity == null) {
-            return Response.status(Status.UNAUTHORIZED).entity("You must be logged in to log out!").build();
+        var existingUser = datastore.run(query);
+
+        if (!existingUser.hasNext()) {
+            return Response.status(Status.NOT_FOUND).entity("You must be loged in to log out").build();
         }
+
+        Entity existingUserEntity = existingUser.next();
 
         Transaction txn = datastore.newTransaction();
         try {
-            txn.delete(tokenKey);
+            txn.delete(existingUserEntity.getKey());
             txn.commit();
             return Response.ok("Logout successful.").build();
         } catch (DatastoreException e) {
@@ -473,4 +476,119 @@ public class utilsResource {
             return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Logout failed.").build();
         }
     }
+
+    @POST
+    @Path("/create")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response createWorkSheet(WorkSheet data) {
+        Key userKey = datastore.newKeyFactory().setKind("User").newKey(data.partnerUsername);
+        Entity userEntity = datastore.get(userKey);
+
+        if (userEntity == null) {
+            return Response.status(Status.NOT_FOUND).entity("You must choose a valid partner.").build();
+        }
+
+        String role = userEntity.getString("role");
+
+        Key sheetKey = datastore.newKeyFactory()
+                .addAncestor(PathElement.of("User", data.partnerUsername))
+                .setKind("WorkSheet")
+                .newKey(data.reference);
+        Entity sheetEntity = datastore.get(sheetKey);
+
+        Transaction txn = datastore.newTransaction();
+        try {
+            if (sheetEntity == null) {
+                if (!role.equals("BACKOFFICE")) {
+                    txn.rollback();
+                    return Response.status(Status.UNAUTHORIZED).entity("Only BACKOFFICE can create worksheets.").build();
+                }
+
+                if (data.reference == null || data.description == null || data.type == null || data.awardStatus == null) {
+                    txn.rollback();
+                    return Response.status(Status.BAD_REQUEST).entity("Missing mandatory fields for worksheet creation.").build();
+                }
+
+                if (data.awardStatus.equals("ADJUDICADO")) {
+                    if (data.date == 0 || data.startDate == 0 || data.endDate == 0 ||
+                            data.awardStatusEntity == null || data.nif == null || data.state == null) {
+                        txn.rollback();
+                        return Response.status(Status.BAD_REQUEST).entity("Missing adjudication fields.").build();
+                    }
+                }
+
+                Entity.Builder newSheet = Entity.newBuilder(sheetKey)
+                        .set("reference", data.reference)
+                        .set("description", data.description)
+                        .set("type", data.type)
+                        .set("awardStatus", data.awardStatus)
+                        .set("partnerUsername", data.partnerUsername)
+                        .set("obs", data.obs == null ? "" : data.obs);
+
+                if (data.awardStatus.equals("ADJUDICADO")) {
+                    newSheet.set("date", data.date)
+                            .set("startDate", data.startDate)
+                            .set("endDate", data.endDate)
+                            .set("awardStatusEntity", data.awardStatusEntity)
+                            .set("nif", data.nif)
+                            .set("state", data.state);
+                }
+
+                txn.put(newSheet.build());
+                txn.commit();
+                return Response.ok("Worksheet created successfully.").build();
+            } else {
+                Entity.Builder updatedSheet = Entity.newBuilder(sheetEntity);
+                String awardStatus = sheetEntity.getString("awardStatus");
+                String assignedPartner = sheetEntity.getString("partnerUsername");
+
+                if (role.equals("BACKOFFICE")) {
+                    updatedSheet.set("description", data.description)
+                            .set("type", data.type)
+                            .set("awardStatus", data.awardStatus)
+                            .set("obs", data.obs == null ? "" : data.obs);
+
+                    if (data.awardStatus.equals("ADJUDICADO")) {
+                        if (data.date == 0 || data.startDate == 0 || data.endDate == 0 ||
+                                data.awardStatusEntity == null || data.nif == null || data.state == null) {
+                            txn.rollback();
+                            return Response.status(Status.BAD_REQUEST).entity("Missing adjudication fields.").build();
+                        }
+
+                        updatedSheet.set("date", data.date)
+                                .set("startDate", data.startDate)
+                                .set("endDate", data.endDate)
+                                .set("awardStatusEntity", data.awardStatusEntity)
+                                .set("nif", data.nif)
+                                .set("state", data.state);
+                    }
+
+                } else if (role.equals("PARTNER")) {
+                    if (!assignedPartner.equals(data.partnerUsername)) {
+                        txn.rollback();
+                        return Response.status(Status.UNAUTHORIZED).entity("You are not allowed to modify this worksheet.").build();
+                    }
+
+                    if (!awardStatus.equals("ADJUDICADO")) {
+                        txn.rollback();
+                        return Response.status(Status.UNAUTHORIZED).entity("You cannot modify a non-awarded worksheet.").build();
+                    }
+
+                    updatedSheet.set("state", data.state)
+                            .set("obs", data.obs == null ? "" : data.obs);
+                } else {
+                    txn.rollback();
+                    return Response.status(Status.UNAUTHORIZED).entity("Invalid role.").build();
+                }
+
+                txn.put(updatedSheet.build());
+                txn.commit();
+                return Response.ok("Worksheet updated successfully.").build();
+            }
+        } catch (DatastoreException e) {
+            if (txn.isActive()) txn.rollback();
+            return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Operation failed.").build();
+        }
+    }
+
 }
