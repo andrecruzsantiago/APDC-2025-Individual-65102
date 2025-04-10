@@ -453,7 +453,7 @@ public class utilsResource {
         Entity userEntity = datastore.get(userKey);
 
         if (userEntity == null) {
-            return Response.status(Status.NOT_FOUND).build();
+            return Response.status(Status.NOT_FOUND).entity("Not a available user to logout.").build();
         }
 
         Key tokenKey = datastore.newKeyFactory().setKind("Token").newKey(username);
