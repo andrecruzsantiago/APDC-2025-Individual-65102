@@ -1,6 +1,6 @@
 package pt.unl.fct.di.apdc.firstwebapp.util;
 
-public class DefaultUser {
+public class UserToUpdateInfoReceived {
     public String username;
     public String email;
     public String name;
@@ -15,7 +15,7 @@ public class DefaultUser {
     public String function;
     public String cc;
 
-    public DefaultUser() {
+    public UserToUpdateInfoReceived() {
 
     }
 }

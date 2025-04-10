@@ -1,9 +1,9 @@
 package pt.unl.fct.di.apdc.firstwebapp.util;
 
-public class User{
+public class UserCreationInfo {
     public String email,username,name,phone,password, passwordConfirm,perfil,cc,role,nif,employee,function,address,nifEmp,status,photo;
 
-    public User(){}
+    public UserCreationInfo(){}
 
 
     public boolean isValid(){

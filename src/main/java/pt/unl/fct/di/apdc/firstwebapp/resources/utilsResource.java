@@ -52,7 +52,7 @@ public class utilsResource {
     @POST
     @Path("/role/{username}")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response changeRole(@PathParam("username") String username, Info data) {
+    public Response changeRole(@PathParam("username") String username, TokenParamInfo data) {
 
         Key userKey = datastore.newKeyFactory().setKind("User").newKey(username);
         Entity userEntity = datastore.get(userKey);
@@ -107,7 +107,7 @@ public class utilsResource {
     @POST
     @Path("/status/{username}")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response changeStatus(@PathParam("username") String username, Info data) {
+    public Response changeStatus(@PathParam("username") String username, TokenParamInfo data) {
 
         Key userKey = datastore.newKeyFactory().setKind("User").newKey(username);
         Entity userEntity = datastore.get(userKey);
@@ -162,7 +162,7 @@ public class utilsResource {
     @POST
     @Path("/delete/{username}")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response deleteAccount(@PathParam("username") String username, Info data) {
+    public Response deleteAccount(@PathParam("username") String username, TokenParamInfo data) {
 
         Key userKey = datastore.newKeyFactory().setKind("User").newKey(username);
         Entity userEntity = datastore.get(userKey);
@@ -240,7 +240,7 @@ public class utilsResource {
     @POST
     @Path("/listUsers/{username}")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response listUsers(@PathParam("username") String username, Info data) {
+    public Response listUsers(@PathParam("username") String username, TokenParamInfo data) {
 
         Key userKey = datastore.newKeyFactory().setKind("User").newKey(username);
         Entity userEntity = datastore.get(userKey);
@@ -276,11 +276,11 @@ public class utilsResource {
         Query<Entity> query = queryBuilder.build();
         QueryResults<Entity> results = datastore.run(query);
 
-        List<DefaultUser> userList = new ArrayList<>();
+        List<UserToUpdateInfoReceived> userList = new ArrayList<>();
 
         while (results.hasNext()) {
             Entity u = results.next();
-            DefaultUser userData = new DefaultUser();
+            UserToUpdateInfoReceived userData = new UserToUpdateInfoReceived();
 
             userData.username = u.getKey().getName();
 
@@ -312,7 +312,7 @@ public class utilsResource {
     @POST
     @Path("/change/{username}")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response update(@PathParam("username") String username, ChangeRequest data) {
+    public Response update(@PathParam("username") String username, UserToChangeAtributesInfo data) {
 
         Key userKey = datastore.newKeyFactory().setKind("User").newKey(username);
         Entity userEntity = datastore.get(userKey);
@@ -340,7 +340,7 @@ public class utilsResource {
             return Response.status(Status.FORBIDDEN).entity("You can only modify activated accounts.").build();
         }
 
-        DefaultUser userData = new DefaultUser();
+        UserToUpdateInfoReceived userData = new UserToUpdateInfoReceived();
 
         if (data.email != null) {
             if (!requesterRole.equals("ADMIN") && !username.equals(data.target)) {
@@ -444,7 +444,7 @@ public class utilsResource {
     @POST
     @Path("/logout/{username}")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response logout(@PathParam("username") String username, Info data) {
+    public Response logout(@PathParam("username") String username, TokenParamInfo data) {
 
         Key userKey = datastore.newKeyFactory().setKind("User").newKey(username);
         Entity userEntity = datastore.get(userKey);

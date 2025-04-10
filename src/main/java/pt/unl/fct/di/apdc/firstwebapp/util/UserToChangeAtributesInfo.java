@@ -1,6 +1,6 @@
 package pt.unl.fct.di.apdc.firstwebapp.util;
 
-public class ChangeRequest {
+public class UserToChangeAtributesInfo {
     public String tokenId;
     public String target;
     public String email;
@@ -16,5 +16,5 @@ public class ChangeRequest {
     public String nifEmp;
     public String cc;
 
-    public ChangeRequest() {}
+    public UserToChangeAtributesInfo() {}
 }

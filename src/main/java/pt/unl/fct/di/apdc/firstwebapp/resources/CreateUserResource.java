@@ -11,9 +11,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 
 import com.google.cloud.datastore.*;
-import pt.unl.fct.di.apdc.firstwebapp.util.User;
-
-import com.google.gson.Gson;
+import pt.unl.fct.di.apdc.firstwebapp.util.UserCreationInfo;
 
 
 @Path("/register")
@@ -22,7 +20,6 @@ public class CreateUserResource {
 
 
     private static final Logger LOG = Logger.getLogger(CreateUserResource.class.getName());
-    private final Gson g = new Gson();
     private final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
 
     public CreateUserResource() {
@@ -32,7 +29,7 @@ public class CreateUserResource {
     @POST
     @Path("/")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response register(User data) {
+    public Response register(UserCreationInfo data) {
         LOG.fine("Attempting to create: " + data.username);
 
         if(!data.isValid()) {
