@@ -1,5 +1,6 @@
 package pt.unl.fct.di.apdc.firstwebapp.resources;
 
+import com.google.appengine.repackaged.org.apache.commons.codec.digest.DigestUtils;
 import com.google.cloud.datastore.*;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -9,6 +10,7 @@ import com.google.gson.Gson;
 import pt.unl.fct.di.apdc.firstwebapp.util.ChangeRequest;
 import pt.unl.fct.di.apdc.firstwebapp.util.DefaultUser;
 import pt.unl.fct.di.apdc.firstwebapp.util.Info;
+import pt.unl.fct.di.apdc.firstwebapp.util.PassInfo;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -363,7 +365,6 @@ public class utilsResource {
             userData.status = data.status;
         }
 
-        // Atributos opcionais
         if (data.perfil != null) userData.perfil = data.perfil;
         if (data.phone != null) userData.phone = data.phone;
         if (data.address != null) userData.address = data.address;
@@ -373,7 +374,6 @@ public class utilsResource {
         if (data.nifEmp != null) userData.nifEmp = data.nifEmp;
         if (data.cc != null) userData.cc = data.cc;
 
-        // Atualizar os dados no targetEntity
         Transaction txn = datastore.newTransaction();
         try {
             if (userData.email != null) targetEntity = Entity.newBuilder(targetEntity).set("email", userData.email).build();
@@ -392,7 +392,7 @@ public class utilsResource {
             txn.update(targetEntity);
             txn.commit();
 
-            return Response.ok().build();
+            return Response.status(Status.ACCEPTED).entity("User updated:"+data.target).build();
         } catch (DatastoreException e) {
             txn.rollback();
             return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.toString()).build();
@@ -400,6 +400,69 @@ public class utilsResource {
             if (txn.isActive()) {
                 txn.rollback();
             }
+        }
+    }
+
+    @POST
+    @Path("/changePass/{username}/")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response changePass(@PathParam("username") String username, @QueryParam("currentPass") String currentPassword, PassInfo data) {
+
+        Key userKey = datastore.newKeyFactory().setKind("User").newKey(username);
+        Entity userEntity = datastore.get(userKey);
+
+
+        if (userEntity == null ) {
+            return Response.status(Status.NOT_FOUND).build();
+        }
+
+        Response tokenCheckResponse = verifyTokenAndGetEntities(username, data.tokenId);
+        if (tokenCheckResponse != null) {
+            return tokenCheckResponse;
+        }
+
+        String storedPassword = userEntity.getString("password");
+        if (!storedPassword.equals(DigestUtils.sha512Hex(currentPassword))) {
+            return Response.status(Status.UNAUTHORIZED).entity("Invalid password.").build();
+        }
+        if(!data.newPassword.equals(data.passwordRepeat)) {
+            return Response.status(Status.CONFLICT).entity("Passwords do not match.").build();
+        }
+        Transaction txn = datastore.newTransaction();
+        try {
+            Entity updatedUser = Entity.newBuilder(userEntity)
+                    .set("password", DigestUtils.sha512Hex(data.newPassword))
+                    .build();
+
+            txn.put(updatedUser);
+            txn.commit();
+
+            return Response.ok("Password updated successfully.").build();
+        } catch (DatastoreException e) {
+            if (txn.isActive()) txn.rollback();
+            return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Failed to update password.").build();
+        }
+    }
+
+    @POST
+    @Path("/logout/{username}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response logout(@PathParam("username") String username) {
+        Key tokenKey = datastore.newKeyFactory().setKind("Token").newKey(username);
+        Entity tokenEntity = datastore.get(tokenKey);
+
+        if (tokenEntity == null) {
+            return Response.status(Status.UNAUTHORIZED).entity("You must be logged in to log out!").build();
+        }
+
+        Transaction txn = datastore.newTransaction();
+        try {
+            txn.delete(tokenKey);
+            txn.commit();
+            return Response.ok("Logout successful.").build();
+        } catch (DatastoreException e) {
+            if (txn.isActive()) txn.rollback();
+            return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Logout failed.").build();
         }
     }
 }
