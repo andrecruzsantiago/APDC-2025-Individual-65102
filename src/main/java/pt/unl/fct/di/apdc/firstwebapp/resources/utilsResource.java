@@ -448,6 +448,14 @@ public class utilsResource {
     @Path("/logout/{username}")
     @Consumes(MediaType.APPLICATION_JSON)
     public Response logout(@PathParam("username") String username) {
+
+        Key userKey = datastore.newKeyFactory().setKind("User").newKey(username);
+        Entity userEntity = datastore.get(userKey);
+
+        if (userEntity == null) {
+            return Response.status(Status.NOT_FOUND).build();
+        }
+
         Key tokenKey = datastore.newKeyFactory().setKind("Token").newKey(username);
         Entity tokenEntity = datastore.get(tokenKey);
 
