@@ -436,10 +436,10 @@ public class utilsResource {
 
             txn.put(updatedUser);
             txn.commit();
-
             return Response.ok("Password updated successfully.").build();
         } catch (DatastoreException e) {
-            if (txn.isActive()) txn.rollback();
+            if (txn.isActive())
+                txn.rollback();
             return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Failed to update password.").build();
         }
     }
