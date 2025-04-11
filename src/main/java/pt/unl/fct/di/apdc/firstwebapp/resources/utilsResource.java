@@ -9,6 +9,7 @@ import jakarta.ws.rs.core.Response.Status;
 import com.google.gson.Gson;
 import pt.unl.fct.di.apdc.firstwebapp.util.*;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
@@ -470,7 +471,7 @@ public class utilsResource {
         try {
             txn.delete(existingUserEntity.getKey());
             txn.commit();
-            return Response.ok("Logout successful.").build();
+            return Response.status(Status.FOUND).location(URI.create("/logoutPage.html")).build();
         } catch (DatastoreException e) {
             if (txn.isActive()) txn.rollback();
             return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Logout failed.").build();
@@ -478,17 +479,24 @@ public class utilsResource {
     }
 
     @POST
-    @Path("/create")
+    @Path("/create/{username}")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response createWorkSheet(WorkSheet data) {
+    public Response createWorkSheet(@PathParam("username") String username, WorkSheet data) {
         Key userKey = datastore.newKeyFactory().setKind("User").newKey(data.partnerUsername);
         Entity userEntity = datastore.get(userKey);
+        Key creatorKey = datastore.newKeyFactory().setKind("User").newKey(username);
+        Entity creatorEntity = datastore.get(creatorKey);
 
-        if (userEntity == null) {
+        if (userEntity == null || creatorEntity == null) {
             return Response.status(Status.NOT_FOUND).entity("You must choose a valid partner.").build();
         }
 
-        String role = userEntity.getString("role");
+        Response tokenCheckResponse = verifyTokenAndGetEntities(username, data.tokenId);
+        if (tokenCheckResponse != null) {
+            return tokenCheckResponse;
+        }
+
+        String role = creatorEntity.getString("role");
 
         Key sheetKey = datastore.newKeyFactory()
                 .addAncestor(PathElement.of("User", data.partnerUsername))
